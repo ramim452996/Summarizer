@@ -16,11 +16,7 @@ class SummarizerController extends Controller
             'endpoint' => 'https://api.groq.com/openai/v1/chat/completions',
             'env_key'  => 'GROQ_API_KEY',
             'models'   => [
-                'qwen/qwen3.8-27b'  => 'Qwen 3.8 27B (Recommended)',
-                'qwen/qwen3.6-27b'  => 'Qwen 3.6 27B',
-                'groq/compound'     => 'Groq Compound',
-                'groq/compound-mini'=> 'Groq Compound Mini',
-                'allam-2-7b'        => 'Allam 2 7B',
+                'qwen/qwen3.8-27b'  => 'Qwen 3.8 27B (Best Free)',
             ],
         ],
         'openrouter' => [
@@ -28,12 +24,7 @@ class SummarizerController extends Controller
             'endpoint' => 'https://openrouter.ai/api/v1/chat/completions',
             'env_key'  => 'OPENROUTER_API_KEY',
             'models'   => [
-                'nvidia/nemotron-3-ultra-550b-a55b:free'             => 'Nemotron Ultra 550B (Recommended)',
-                'nvidia/nemotron-3-super-120b-a12b:free'             => 'Nemotron Super 120B',
-                'google/gemma-4-31b-it:free'                         => 'Gemma 4 31B',
-                'google/gemma-4-26b-a4b-it:free'                     => 'Gemma 4 26B',
-                'thinkingmachines/inkling:free'                      => 'Inkling (1M ctx)',
-                'nvidia/nemotron-3.5-lightning:free'                 => 'Nemotron 3.5 Lightning',
+                'nvidia/nemotron-3-ultra-550b-a55b:free' => 'Nemotron Ultra 550B (Best Free)',
             ],
         ],
     ];
@@ -51,6 +42,9 @@ class SummarizerController extends Controller
      */
     public function summarize(Request $request)
     {
+        // Increase maximum execution time to allow for slow external API responses
+        set_time_limit(120);
+
         $validModels = collect(self::$providers)->flatMap(fn($p) => array_keys($p['models']))->toArray();
 
         $request->validate([
