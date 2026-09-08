@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Summarize any website instantly in English or Bengali using Llama 3.3 70B via OpenRouter." />
-    <title>Website Summarizer — Llama 3.3 70B</title>
+    <meta name="description" content="Summarize any website instantly in English or Bengali using Nemotron 120B via OpenRouter." />
+    <title>Website Summarizer — Nemotron 120B</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -113,7 +113,7 @@
             <span class="text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-indigo-400">Summarizer</span>
         </h1>
         <p class="mt-3 muted-text text-sm md:text-base max-w-md mx-auto">
-            Powered by <span class="text-violet-500 font-semibold">Llama 3.3 70B</span> via
+            Powered by <span class="text-violet-500 font-semibold">Nemotron 120B</span> via
             <span class="text-indigo-400 font-semibold">OpenRouter</span> — paste any URL and get an instant summary.
         </p>
     </div>
@@ -254,7 +254,7 @@
     <p class="mt-14 muted-text text-xs text-center">
         Built with <span class="text-violet-400">Laravel</span> &middot;
         <span class="text-indigo-400">OpenRouter</span> &middot;
-        <span class="text-emerald-400">Llama 3.3 70B</span>
+        <span class="text-emerald-400">Nemotron 120B</span>
     </p>
 
     <script>

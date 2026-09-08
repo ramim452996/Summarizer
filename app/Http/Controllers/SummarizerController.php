@@ -71,7 +71,7 @@ class SummarizerController extends Controller
                 'HTTP-Referer'  => env('APP_URL', 'http://localhost'),
                 'X-Title'       => 'Website Summarizer',
             ])->timeout(60)->post('https://openrouter.ai/api/v1/chat/completions', [
-                'model'    => 'meta-llama/llama-3.3-70b-instruct:free',
+                'model'    => 'nvidia/nemotron-3-super-120b-a12b:free',
                 'messages' => [
                     [
                         'role'    => 'system',
