@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Purple rounded background -->
+  <rect width="100" height="100" rx="22" fill="#6B52C8"/>
+
+  <!-- White document card -->
+  <rect x="20" y="16" width="54" height="66" rx="7" fill="white" opacity="0.96"/>
+
+  <!-- Two small dots top-left of doc -->
+  <circle cx="31" cy="27" r="3.2" fill="#7B63D6" opacity="0.55"/>
+  <circle cx="40" cy="27" r="3.2" fill="#7B63D6" opacity="0.55"/>
+
+  <!-- Text lines -->
+  <rect x="28" y="40" width="34" height="4.5" rx="2.2" fill="#7B63D6" opacity="0.50"/>
+  <rect x="28" y="51" width="28" height="4.5" rx="2.2" fill="#7B63D6" opacity="0.50"/>
+  <rect x="28" y="62" width="22" height="4.5" rx="2.2" fill="#7B63D6" opacity="0.50"/>
+
+  <!-- Orange 4-pointed sparkle star (top-right of doc) -->
+  <path d="M71 30
+           L73.2 37.5
+           L80.5 39.5
+           L73.2 41.5
+           L71 49
+           L68.8 41.5
+           L61.5 39.5
+           L68.8 37.5
+           Z"
+        fill="#F5A623"/>
+</svg>

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Summarize any website instantly in English or Bengali using Nemotron 120B via OpenRouter." />
     <title>Website Summarizer — Nemotron 120B</title>
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -101,10 +102,8 @@
     {{-- ── Header ───────────────────────────────────────────────────────────── --}}
     <div class="text-center mb-10 animate-fade-in w-full max-w-2xl">
         <div class="flex items-center justify-center gap-3 mb-3">
-            <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                </svg>
+            <div class="w-14 h-14 rounded-2xl overflow-hidden shadow-xl">
+                <img src="/logo.svg" alt="Website Summarizer Logo" class="w-full h-full object-cover" />
             </div>
             <span class="text-xs font-bold tracking-widest text-violet-400 uppercase">AI Powered</span>
         </div>
