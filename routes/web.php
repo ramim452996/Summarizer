@@ -1,8 +1,11 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\SummarizerController;
 
-Route::view('/', 'welcome')->name('home');
+Route::get('/', [SummarizerController::class, 'index']);
+
+Route::post('/summarize', [SummarizerController::class, 'summarize'])->name('summarize');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::view('dashboard', 'dashboard')->name('dashboard');
