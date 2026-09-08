@@ -8,25 +8,64 @@ use Illuminate\Support\Facades\Http;
 class SummarizerController extends Controller
 {
     /**
+     * Available providers and their best models.
+     */
+    public static array $providers = [
+        'groq' => [
+            'label'    => 'Groq',
+            'endpoint' => 'https://api.groq.com/openai/v1/chat/completions',
+            'env_key'  => 'GROQ_API_KEY',
+            'models'   => [
+                'qwen/qwen3.8-27b'  => 'Qwen 3.8 27B (Recommended)',
+                'qwen/qwen3.6-27b'  => 'Qwen 3.6 27B',
+                'groq/compound'     => 'Groq Compound',
+                'groq/compound-mini'=> 'Groq Compound Mini',
+                'allam-2-7b'        => 'Allam 2 7B',
+            ],
+        ],
+        'openrouter' => [
+            'label'    => 'OpenRouter',
+            'endpoint' => 'https://openrouter.ai/api/v1/chat/completions',
+            'env_key'  => 'OPENROUTER_API_KEY',
+            'models'   => [
+                'nvidia/nemotron-3-ultra-550b-a55b:free'             => 'Nemotron Ultra 550B (Recommended)',
+                'nvidia/nemotron-3-super-120b-a12b:free'             => 'Nemotron Super 120B',
+                'google/gemma-4-31b-it:free'                         => 'Gemma 4 31B',
+                'google/gemma-4-26b-a4b-it:free'                     => 'Gemma 4 26B',
+                'thinkingmachines/inkling:free'                      => 'Inkling (1M ctx)',
+                'nvidia/nemotron-3.5-lightning:free'                 => 'Nemotron 3.5 Lightning',
+            ],
+        ],
+    ];
+
+    /**
      * Show the summarizer form view.
      */
     public function index()
     {
-        return view('summarizer');
+        return view('summarizer', ['providers' => self::$providers]);
     }
 
     /**
-     * Fetch a webpage, extract its text content, and summarize it via OpenRouter API.
+     * Fetch a webpage, extract its text, and summarize via the chosen provider & model.
      */
     public function summarize(Request $request)
     {
+        $validModels = collect(self::$providers)->flatMap(fn($p) => array_keys($p['models']))->toArray();
+
         $request->validate([
             'url'      => ['required', 'url'],
             'language' => ['nullable', 'in:english,bengali'],
+            'provider' => ['required', 'in:groq,openrouter'],
+            'model'    => ['required', 'in:' . implode(',', $validModels)],
         ]);
 
         $url      = $request->input('url');
         $language = $request->input('language', 'english');
+        $provider = $request->input('provider', 'groq');
+        $model    = $request->input('model');
+
+        $providerConfig = self::$providers[$provider];
 
         // ── 1. Fetch the webpage ──────────────────────────────────────────────
         try {
@@ -35,14 +74,16 @@ class SummarizerController extends Controller
             ])->timeout(15)->get($url);
 
             if ($response->failed()) {
-                return back()->with('error', "Could not fetch the page. HTTP status: {$response->status()}");
+                return back()
+                    ->withInput()
+                    ->with('error', "Could not fetch the page. HTTP status: {$response->status()}");
             }
 
             $html = $response->body();
         } catch (\Illuminate\Http\Client\RequestException $e) {
-            return back()->with('error', 'Failed to reach the URL: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Failed to reach the URL: ' . $e->getMessage());
         } catch (\Exception $e) {
-            return back()->with('error', 'Unexpected error while fetching URL: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Unexpected error while fetching URL: ' . $e->getMessage());
         }
 
         // ── 2. Clean HTML → plain text ────────────────────────────────────────
@@ -54,7 +95,7 @@ class SummarizerController extends Controller
         $text = trim($text);
         $text = mb_substr($text, 0, 4000);
 
-        // ── 3. Build system prompt based on language ──────────────────────────
+        // ── 3. Build language-aware prompts ───────────────────────────────────
         if ($language === 'bengali') {
             $systemPrompt = 'আপনি একজন সহায়ক AI সহকারী। নিচের ওয়েবপেজের বিষয়বস্তু বাংলায় স্পষ্ট ও সংক্ষিপ্তভাবে কয়েকটি ছোট অনুচ্ছেদে সারসংক্ষেপ করুন। সারসংক্ষেপটি অবশ্যই বাংলায় লিখতে হবে।';
             $userPrompt   = "নিচের ওয়েবপেজের বিষয়বস্তু বাংলায় সারসংক্ষেপ করুন:\n\n{$text}";
@@ -63,42 +104,52 @@ class SummarizerController extends Controller
             $userPrompt   = "Please summarize the following web page content in English:\n\n{$text}";
         }
 
-        // ── 4. Send to OpenRouter API ─────────────────────────────────────────
+        // ── 4. Build request headers per provider ─────────────────────────────
+        $headers = [
+            'Authorization' => 'Bearer ' . env($providerConfig['env_key']),
+            'Content-Type'  => 'application/json',
+        ];
+
+        // OpenRouter requires these extra headers
+        if ($provider === 'openrouter') {
+            $headers['HTTP-Referer'] = env('APP_URL', 'http://localhost');
+            $headers['X-Title']      = 'Website Summarizer';
+        }
+
+        // ── 5. Call the API ───────────────────────────────────────────────────
         try {
-            $apiResponse = Http::withHeaders([
-                'Authorization' => 'Bearer ' . env('OPENROUTER_API_KEY'),
-                'Content-Type'  => 'application/json',
-                'HTTP-Referer'  => env('APP_URL', 'http://localhost'),
-                'X-Title'       => 'Website Summarizer',
-            ])->timeout(60)->post('https://openrouter.ai/api/v1/chat/completions', [
-                'model'    => 'nvidia/nemotron-3-super-120b-a12b:free',
-                'messages' => [
-                    [
-                        'role'    => 'system',
-                        'content' => $systemPrompt,
+            $apiResponse = Http::withHeaders($headers)
+                ->timeout(60)
+                ->post($providerConfig['endpoint'], [
+                    'model'    => $model,
+                    'messages' => [
+                        ['role' => 'system', 'content' => $systemPrompt],
+                        ['role' => 'user',   'content' => $userPrompt],
                     ],
-                    [
-                        'role'    => 'user',
-                        'content' => $userPrompt,
-                    ],
-                ],
-                'temperature' => 0.5,
-                'max_tokens'  => 700,
-            ]);
+                    'temperature' => 0.5,
+                    'max_tokens'  => 700,
+                ]);
 
             if ($apiResponse->failed()) {
                 $errorBody = $apiResponse->json('error.message', 'Unknown API error.');
-                return back()->with('error', "OpenRouter API error: {$errorBody}");
+                return back()->withInput()->with('error', "{$providerConfig['label']} API error: {$errorBody}");
             }
 
             $summary = $apiResponse->json('choices.0.message.content', 'No summary returned.');
         } catch (\Illuminate\Http\Client\RequestException $e) {
-            return back()->with('error', 'Failed to reach OpenRouter API: ' . $e->getMessage());
+            return back()->withInput()->with('error', "Failed to reach {$providerConfig['label']} API: " . $e->getMessage());
         } catch (\Exception $e) {
-            return back()->with('error', 'Unexpected error while calling API: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Unexpected error while calling API: ' . $e->getMessage());
         }
 
-        // ── 5. Return results to view ─────────────────────────────────────────
-        return view('summarizer', compact('summary', 'url', 'language'));
+        // ── 6. Return results ─────────────────────────────────────────────────
+        return view('summarizer', [
+            'providers' => self::$providers,
+            'summary'   => $summary,
+            'url'       => $url,
+            'language'  => $language,
+            'provider'  => $provider,
+            'model'     => $model,
+        ]);
     }
 }

@@ -75,7 +75,11 @@
         html:not(.dark) .summary-text { color: #374151; }
 
         .glow-btn:hover { box-shadow: 0 0 20px rgba(139,92,246,0.55), 0 0 40px rgba(139,92,246,0.25); }
-        .lang-btn.active { background: linear-gradient(90deg,#7c3aed,#4f46e5); color:#fff; }
+        .lang-btn.active     { background: linear-gradient(90deg,#7c3aed,#4f46e5); color:#fff; }
+        .provider-btn.active  { background: linear-gradient(90deg,#7c3aed,#4f46e5); color:#fff; border-color: transparent; }
+
+        /* select dropdown arrow color */
+        select.input-field { appearance: auto; }
 
         /* Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
@@ -112,8 +116,8 @@
             <span class="text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-indigo-400">Summarizer</span>
         </h1>
         <p class="mt-3 muted-text text-sm md:text-base max-w-md mx-auto">
-            Powered by <span class="text-violet-500 font-semibold">Nemotron 120B</span> via
-            <span class="text-indigo-400 font-semibold">OpenRouter</span> — paste any URL and get an instant summary.
+            Powered by <span class="text-violet-500 font-semibold">Groq</span> &amp;
+            <span class="text-indigo-400 font-semibold">OpenRouter</span> — choose your AI provider and summarize any URL instantly.
         </p>
     </div>
 
@@ -133,6 +137,36 @@
 
         {{-- Form Card --}}
         <div class="glass-card rounded-2xl p-7 shadow-xl">
+
+            {{-- Provider Selector --}}
+            <div class="mb-5">
+                <span class="muted-text text-xs font-semibold uppercase tracking-wider block mb-2">AI Provider:</span>
+                <div class="flex gap-2">
+                    <button type="button" id="prov-groq"
+                            class="provider-btn {{ ($provider ?? 'groq') === 'groq' ? 'active' : '' }}
+                                   flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold
+                                   border border-violet-500/30 hover:bg-violet-600/20 transition-all duration-200"
+                            onclick="setProvider('groq')">
+                        <span class="text-base">⚡</span> Groq
+                    </button>
+                    <button type="button" id="prov-openrouter"
+                            class="provider-btn {{ ($provider ?? 'groq') === 'openrouter' ? 'active' : '' }}
+                                   flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold
+                                   border border-violet-500/30 hover:bg-violet-600/20 transition-all duration-200"
+                            onclick="setProvider('openrouter')">
+                        <span class="text-base">🌐</span> OpenRouter
+                    </button>
+                </div>
+            </div>
+
+            {{-- Model Selector --}}
+            <div class="mb-5">
+                <label class="muted-text text-xs font-semibold uppercase tracking-wider block mb-2" for="model-select">Model:</label>
+                <select id="model-select"
+                        class="input-field w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all duration-200 cursor-pointer">
+                    {{-- Populated by JS --}}
+                </select>
+            </div>
 
             {{-- Language Selector --}}
             <div class="flex items-center gap-2 mb-5">
@@ -160,6 +194,8 @@
             <form action="{{ route('summarize') }}" method="POST" id="summarize-form">
                 @csrf
                 <input type="hidden" name="language" id="language-input" value="{{ $language ?? 'english' }}" />
+                <input type="hidden" name="provider" id="provider-input" value="{{ $provider ?? 'groq' }}" />
+                <input type="hidden" name="model"    id="model-input"    value="{{ $model ?? 'qwen/qwen3.8-27b' }}" />
 
                 <div class="flex flex-col sm:flex-row gap-3">
                     <input
@@ -290,7 +326,64 @@
             }
         }
 
+        // ── Provider & Model selector ──────────────────────────────────────────
+        const MODELS = {
+            groq: {
+                'qwen/qwen3.8-27b':   '⚡ Qwen 3.8 27B (Recommended)',
+                'qwen/qwen3.6-27b':   '⚡ Qwen 3.6 27B',
+                'groq/compound':      '⚡ Groq Compound',
+                'groq/compound-mini': '⚡ Groq Compound Mini',
+                'allam-2-7b':         '⚡ Allam 2 7B',
+            },
+            openrouter: {
+                'nvidia/nemotron-3-ultra-550b-a55b:free':  '🌐 Nemotron Ultra 550B (Recommended)',
+                'nvidia/nemotron-3-super-120b-a12b:free':  '🌐 Nemotron Super 120B',
+                'google/gemma-4-31b-it:free':              '🌐 Gemma 4 31B',
+                'google/gemma-4-26b-a4b-it:free':          '🌐 Gemma 4 26B',
+                'thinkingmachines/inkling:free':           '🌐 Inkling (1M ctx)',
+                'nvidia/nemotron-3.5-lightning:free':      '🌐 Nemotron 3.5 Lightning',
+            },
+        };
+
+        const currentProvider = document.getElementById('provider-input').value || 'groq';
+        const currentModel    = document.getElementById('model-input').value    || 'qwen/qwen3.8-27b';
+
+        function populateModels(provider, selectedModel) {
+            const select = document.getElementById('model-select');
+            select.innerHTML = '';
+            Object.entries(MODELS[provider]).forEach(([value, label]) => {
+                const opt      = document.createElement('option');
+                opt.value      = value;
+                opt.textContent = label;
+                if (value === selectedModel) opt.selected = true;
+                select.appendChild(opt);
+            });
+            // sync hidden input
+            document.getElementById('model-input').value = select.value;
+        }
+
+        function setProvider(provider) {
+            document.getElementById('provider-input').value = provider;
+
+            // Update button states
+            document.getElementById('prov-groq').classList.toggle('active', provider === 'groq');
+            document.getElementById('prov-openrouter').classList.toggle('active', provider === 'openrouter');
+
+            // Repopulate model dropdown with first model as default
+            const firstModel = Object.keys(MODELS[provider])[0];
+            populateModels(provider, firstModel);
+        }
+
+        // Sync model hidden input when dropdown changes
+        document.getElementById('model-select').addEventListener('change', function () {
+            document.getElementById('model-input').value = this.value;
+        });
+
+        // Init on page load
+        populateModels(currentProvider, currentModel);
+
         // ── Language selector ──────────────────────────────────────────────────
+
         function setLang(lang) {
             document.getElementById('language-input').value = lang;
 
